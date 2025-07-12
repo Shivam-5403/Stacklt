@@ -1,5 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Bold, Italic, Underline, List, ListOrdered, Quote, Link, Smile, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
+import Select from 'react-select';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 const AskQuestion = () => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -7,6 +10,29 @@ const AskQuestion = () => {
   const [title, setTitle] = useState('');
   const [tags, setTags] = useState('');
   const editorRef = useRef(null);
+  const [availableTags, setAvailableTags] = useState([]);
+  const [selectedTags, setSelectedTags] = useState([]);
+  const navigator = useNavigate()
+  
+  useEffect(() => {
+    const fetchTags = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/api/tags');
+        const options = response.data.map(tag => ({
+          value: tag._id,
+          label: tag.name
+        }));
+        setAvailableTags(options);
+      } catch (error) {
+        console.error('Error fetching tags:', error);
+      }
+    };
+
+    fetchTags();
+  }, []);
+
+
+
 
   const emojis = [
     '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃',
@@ -43,15 +69,33 @@ const AskQuestion = () => {
     setDescription(editorRef.current.innerHTML);
   };
 
-  const handleSubmit = () => {
+  
+const handleSubmit = async () => {
+  try {
+    const tagIds = selectedTags.map(tag => tag.value);
     const questionData = {
       title,
       description,
-      tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag)
+      tags: tagIds
     };
-    console.log('Question submitted:', questionData);
+
+    const token = localStorage.getItem('token');
+
+    const response = await axios.post('http://localhost:5000/api/questions', questionData, {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `${token}`
+      }
+    });
+
+    console.log('Question submitted:', response.data);
     alert('Question submitted successfully!');
-  };
+    navigator('/');
+  } catch (error) {
+    console.error('Error submitting question:', error);
+    alert('Failed to submit question. Please try again.');
+  }
+};
 
   return (
     <div className="container mt-5">
@@ -282,16 +326,15 @@ const AskQuestion = () => {
             </div>
 
             <div className="form-group mb-3">
-              <label htmlFor="tags" className="form-label">Tags</label>
-              <input 
-                type="text" 
-                className="form-control" 
-                id="tags" 
-                placeholder="Add tags separated by commas (e.g., react, fastapi)"
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-              />
-            </div>
+        <label className="form-label">Tags</label>
+        <Select
+          isMulti
+          options={availableTags}
+          value={selectedTags}
+          onChange={setSelectedTags}
+          placeholder="Select tags..."
+        />
+      </div>
 
             <button 
               type="button" 
