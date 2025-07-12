@@ -1,5 +1,5 @@
 import Answer from '../models/Answer.js';
-import Question from '../models/Question.js';
+import Question from '../models/Questions.js';
 import Notification from '../models/Notification.js';
 
 // @route POST /api/answers/:questionId
