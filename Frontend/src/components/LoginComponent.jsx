@@ -12,24 +12,15 @@ const LoginComponent = () => {
     async function handleLoginForm(e){
         e.preventDefault();
 
-
-
         await loginAPICall(username, password).then((response)=>{
             console.log(response.data)
-
             // For basic auth 
-            // const token = 'Basic '+window.btoa(username+":"+password)
-
-            const token = 'Bearer ' + response.data.accessToken
-            
+            // const Token = 'Basic '+window.btoa(username+":"+password)
+            const Token = 'Bearer ' + response.data.token
             const role = response.data.role;
-
-            storeToken(token)
-
+            storeToken(Token)
             saveLoggedInUser(username, role)
-
-            navigator("/todos")
-
+            navigator("/")
             window.location.reload(false);
         }).catch(error=>{
             console.error(error);

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { registerAPICall } from '../services/AuthService';
+import { useNavigate } from "react-router-dom";
+
 
 const RegisterComponent = () => {
 
@@ -12,10 +14,10 @@ const RegisterComponent = () => {
         e.preventDefault();
 
         const register = {username, email, password}
-        console.log(register);
 
         registerAPICall(register).then((response)=>{
             console.log(response.data);
+
         }).catch(error=>{
             console.log(error);
         })

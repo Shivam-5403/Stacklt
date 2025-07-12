@@ -4,7 +4,6 @@ import { isUserLoggedIn, logout } from '../services/AuthService';
 import { useNavigate } from 'react-router-dom';
 const HeaderComponent = () => {
 
-
   const isAuth = isUserLoggedIn();
   const navigator = useNavigate();
 

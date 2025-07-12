@@ -16,7 +16,6 @@ const HomePage = () => {
   const navigator = useNavigate()
   
 
-  
   const handleAskQuestion = () => {
     navigator('/ask-question'); // Uncomment when routing is set up
     // alert('Navigate to ask question page');
