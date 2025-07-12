@@ -1,10 +1,8 @@
 
 import './App.css'
-import ListTodoComponent from './components/ListTodoComponent'
 import HeaderComponent from './components/HeaderComponent'
 import FooterComponent from './components/FooterComponent'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import TodoComponent from './components/TodoComponent'
 import RegisterComponent from './components/RegisterComponent'
 import LoginComponent from './components/LoginComponent'
 import { isUserLoggedIn } from './services/AuthService'
