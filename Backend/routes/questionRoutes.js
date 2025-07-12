@@ -1,12 +1,20 @@
 import express from 'express';
-import { registerUser, loginUser } from '../controllers/authController.js';
+import {
+    createQuestion,
+    getAllQuestions,
+    getQuestionById
+} from '../controllers/questionController.js';
+import { protect } from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
-// POST /api/auth/register
-router.post('/register', registerUser);
+// GET /api/questions
+router.get('/', getAllQuestions);
 
-// POST /api/auth/login
-router.post('/login', loginUser);
+// GET /api/questions/:id
+router.get('/:id', getQuestionById);
+
+// POST /api/questions
+router.post('/', protect, createQuestion);
 
 export default router;

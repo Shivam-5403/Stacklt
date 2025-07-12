@@ -10,6 +10,7 @@ import questionRoutes from './routes/questionRoutes.js';
 import answerRoutes from './routes/answerRoutes.js';
 import tagRoutes from './routes/tagRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 
 // Load .env variables
 config();
@@ -25,6 +26,9 @@ app.use(cors());
 app.use(json()); // Body parser
 app.use(morgan('dev'));
 app.use(cookieParser());
+app.use(notFound);
+app.use(errorHandler);
+
 
 app.use('/api/auth', authRoutes);
 app.use('/api/questions', questionRoutes);

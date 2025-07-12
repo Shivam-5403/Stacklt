@@ -1,20 +1,16 @@
 import express from 'express';
 import {
-    addAnswer,
-    voteAnswer,
-    acceptAnswer
-} from '../controllers/answerController.js';
+    getNotifications,
+    markAsRead
+} from '../controllers/notificationController.js';
 import { protect } from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
-// POST /api/answers/:questionId
-router.post('/:questionId', protect, addAnswer);
+// GET /api/notifications
+router.get('/', protect, getNotifications);
 
-// POST /api/answers/:answerId/vote
-router.post('/:answerId/vote', protect, voteAnswer);
-
-// PATCH /api/answers/:answerId/accept
-router.patch('/:answerId/accept', protect, acceptAnswer);
+// PATCH /api/notifications/:id/read
+router.patch('/:id/read', protect, markAsRead);
 
 export default router;
