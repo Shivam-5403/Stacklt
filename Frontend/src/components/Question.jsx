@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Search, MessageCircle, CheckCircle, Clock, Plus, ThumbsUp, ThumbsDown, Edit3, Bold, Italic, Code, Link, List, Eye } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { Search, MessageCircle, CheckCircle, Clock, Plus, ThumbsUp, ThumbsDown, Edit3, Bold, Italic, Code, Link, List, Eye, Underline, ListOrdered, Quote, AlignLeft, AlignCenter, AlignRight, Smile } from "lucide-react";
 
 const QuestionPage = () => {
   const [answers, setAnswers] = useState([
@@ -23,45 +23,82 @@ const QuestionPage = () => {
   const [newAnswer, setNewAnswer] = useState("");
   const [votedAnswers, setVotedAnswers] = useState({});
   const [isPreview, setIsPreview] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const editorRef = useRef(null);
+
+  const emojis = [
+    '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃',
+    '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙',
+    '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔',
+    '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥',
+    '👍', '👎', '👌', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉',
+    '💡', '🔥', '⭐', '✨', '💯', '❤️', '💖', '💕', '💗', '💓'
+  ];
 
   const handleVote = (id, direction) => {
-  const currentVote = votedAnswers[id];
-  
-  // If clicking the same vote, remove it (toggle off)
-  if (currentVote === direction) {
+    const currentVote = votedAnswers[id];
+    
+    // If clicking the same vote, remove it (toggle off)
+    if (currentVote === direction) {
+      setAnswers((prev) =>
+        prev.map((ans) =>
+          ans.id === id 
+            ? { ...ans, votes: direction === 'up' ? ans.votes - 1 : ans.votes + 1 } 
+            : ans
+        )
+      );
+      setVotedAnswers(prev => ({ ...prev, [id]: null }));
+      return;
+    }
+    
+    // Calculate vote change
+    let voteChange = 0;
+    if (currentVote === 'up' && direction === 'down') {
+      voteChange = -2; // Remove upvote and add downvote
+    } else if (currentVote === 'down' && direction === 'up') {
+      voteChange = 2; // Remove downvote and add upvote
+    } else if (direction === 'up') {
+      voteChange = 1; // First time upvote
+    } else {
+      voteChange = -1; // First time downvote
+    }
+    
     setAnswers((prev) =>
       prev.map((ans) =>
         ans.id === id 
-          ? { ...ans, votes: direction === 'up' ? ans.votes - 1 : ans.votes + 1 } 
+          ? { ...ans, votes: ans.votes + voteChange } 
           : ans
       )
     );
-    setVotedAnswers(prev => ({ ...prev, [id]: null }));
-    return;
-  }
-  
-  // Calculate vote change
-  let voteChange = 0;
-  if (currentVote === 'up' && direction === 'down') {
-    voteChange = -2; // Remove upvote and add downvote
-  } else if (currentVote === 'down' && direction === 'up') {
-    voteChange = 2; // Remove downvote and add upvote
-  } else if (direction === 'up') {
-    voteChange = 1; // First time upvote
-  } else {
-    voteChange = -1; // First time downvote
-  }
-  
-  setAnswers((prev) =>
-    prev.map((ans) =>
-      ans.id === id 
-        ? { ...ans, votes: ans.votes + voteChange } 
-        : ans
-    )
-  );
-  
-  setVotedAnswers(prev => ({ ...prev, [id]: direction }));
-};
+    
+    setVotedAnswers(prev => ({ ...prev, [id]: direction }));
+  };
+
+  const executeCommand = (command, value = null) => {
+    document.execCommand(command, false, value);
+    editorRef.current.focus();
+  };
+
+  const insertEmoji = (emoji) => {
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const textNode = document.createTextNode(emoji);
+      range.insertNode(textNode);
+      range.setStartAfter(textNode);
+      range.setEndAfter(textNode);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    } else {
+      editorRef.current.innerHTML += emoji;
+    }
+    setShowEmojiPicker(false);
+    editorRef.current.focus();
+  };
+
+  const handleContentChange = () => {
+    setNewAnswer(editorRef.current.innerHTML);
+  };
 
   const handleSubmit = () => {
     if (newAnswer.trim()) {
@@ -78,63 +115,18 @@ const QuestionPage = () => {
       ]);
       setNewAnswer("");
       setIsPreview(false);
+      if (editorRef.current) {
+        editorRef.current.innerHTML = "";
+      }
     }
-  };
-
-  const insertFormatting = (format) => {
-    const textarea = document.getElementById('answer-textarea');
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = newAnswer.substring(start, end);
-    
-    let formattedText = '';
-    switch (format) {
-      case 'bold':
-        formattedText = `**${selectedText || 'bold text'}**`;
-        break;
-      case 'italic':
-        formattedText = `*${selectedText || 'italic text'}*`;
-        break;
-      case 'code':
-        formattedText = selectedText.includes('\n') 
-          ? `\`\`\`\n${selectedText || 'code block'}\n\`\`\``
-          : `\`${selectedText || 'code'}\``;
-        break;
-      case 'link':
-        formattedText = `[${selectedText || 'link text'}](url)`;
-        break;
-      case 'list':
-        formattedText = `\n- ${selectedText || 'list item'}\n`;
-        break;
-      default:
-        return;
-    }
-    
-    const newText = newAnswer.substring(0, start) + formattedText + newAnswer.substring(end);
-    setNewAnswer(newText);
-    
-    // Refocus textarea
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + formattedText.length, start + formattedText.length);
-    }, 0);
   };
 
   const renderContent = (content) => {
-    // Simple markdown-like rendering
-    return content
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/`([^`]+)`/g, '<code class="bg-light px-1 rounded">$1</code>')
-      .replace(/```\n([\s\S]*?)\n```/g, '<pre class="bg-light p-2 rounded"><code>$1</code></pre>')
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-primary">$1</a>')
-      .replace(/\n- (.*)/g, '<li>$1</li>')
-      .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
-      .replace(/\n/g, '<br>');
+    return content;
   };
 
   const formatPreview = (text) => {
-    return renderContent(text || "Nothing to preview...");
+    return text || "Nothing to preview...";
   };
 
   return (
@@ -187,8 +179,8 @@ const QuestionPage = () => {
                     <div className="me-3 text-center" style={{ minWidth: '60px' }}>
                       <button
                         className={`btn btn-sm btn-outline-success mb-1 ${
-  votedAnswers[id] === 'up' ? 'btn-success text-white' : ''
-}`}
+                          votedAnswers[id] === 'up' ? 'btn-success text-white' : ''
+                        }`}
                         onClick={() => handleVote(id, 'up')}
                       >
                         <ThumbsUp size={16} />
@@ -196,8 +188,8 @@ const QuestionPage = () => {
                       <div className="fw-bold text-dark">{votes}</div>
                       <button
                         className={`btn btn-sm btn-outline-danger mt-1 ${
-  votedAnswers[id] === 'down' ? 'btn-danger text-white' : ''
-}`}
+                          votedAnswers[id] === 'down' ? 'btn-danger text-white' : ''
+                        }`}
                         onClick={() => handleVote(id, 'down')}
                       >
                         <ThumbsDown size={16} />
@@ -239,92 +231,239 @@ const QuestionPage = () => {
               </h5>
             </div>
             <div className="card-body">
-              {/* Rich Text Toolbar */}
-              <div className="mb-3">
-                <div className="btn-toolbar" role="toolbar">
-                  <div className="btn-group me-2" role="group">
+              {/* Rich Text Editor Toolbar */}
+              <div className="border rounded-top p-2 bg-light mb-0">
+                <div className="d-flex flex-wrap gap-1">
+                  {/* Text Formatting */}
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={() => executeCommand('bold')}
+                    title="Bold"
+                  >
+                    <Bold size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={() => executeCommand('italic')}
+                    title="Italic"
+                  >
+                    <Italic size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={() => executeCommand('underline')}
+                    title="Underline"
+                  >
+                    <Underline size={14} />
+                  </button>
+                  
+                  <div className="border-start mx-2"></div>
+                  
+                  {/* Lists */}
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={() => executeCommand('insertUnorderedList')}
+                    title="Bullet List"
+                  >
+                    <List size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={() => executeCommand('insertOrderedList')}
+                    title="Numbered List"
+                  >
+                    <ListOrdered size={14} />
+                  </button>
+                  
+                  <div className="border-start mx-2"></div>
+                  
+                  {/* Alignment */}
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={() => executeCommand('justifyLeft')}
+                    title="Align Left"
+                  >
+                    <AlignLeft size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={() => executeCommand('justifyCenter')}
+                    title="Align Center"
+                  >
+                    <AlignCenter size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={() => executeCommand('justifyRight')}
+                    title="Align Right"
+                  >
+                    <AlignRight size={14} />
+                  </button>
+                  
+                  <div className="border-start mx-2"></div>
+                  
+                  {/* Quote */}
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={() => executeCommand('formatBlock', 'blockquote')}
+                    title="Quote"
+                  >
+                    <Quote size={14} />
+                  </button>
+                  
+                  {/* Link */}
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={() => {
+                      const url = prompt('Enter URL:');
+                      if (url) executeCommand('createLink', url);
+                    }}
+                    title="Insert Link"
+                  >
+                    <Link size={14} />
+                  </button>
+                  
+                  {/* Code */}
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={() => executeCommand('formatBlock', 'pre')}
+                    title="Code Block"
+                  >
+                    <Code size={14} />
+                  </button>
+                  
+                  <div className="border-start mx-2"></div>
+                  
+                  {/* Emoji Picker */}
+                  <div className="position-relative">
                     <button
                       type="button"
                       className="btn btn-sm btn-outline-secondary"
-                      onClick={() => insertFormatting('bold')}
-                      title="Bold"
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      title="Insert Emoji"
                     >
-                      <Bold size={14} />
+                      <Smile size={14} />
                     </button>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-secondary"
-                      onClick={() => insertFormatting('italic')}
-                      title="Italic"
-                    >
-                      <Italic size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-secondary"
-                      onClick={() => insertFormatting('code')}
-                      title="Code"
-                    >
-                      <Code size={14} />
-                    </button>
+                    
+                    {showEmojiPicker && (
+                      <div className="position-absolute top-100 start-0 bg-white border rounded shadow-lg p-3 mt-1" style={{ zIndex: 1000, width: '300px' }}>
+                        <div className="d-flex flex-wrap gap-1">
+                          {emojis.map((emoji, index) => (
+                            <button
+                              key={index}
+                              type="button"
+                              className="btn btn-sm btn-outline-light border-0 p-1"
+                              onClick={() => insertEmoji(emoji)}
+                              style={{ fontSize: '16px' }}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="mt-2">
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-secondary"
+                            onClick={() => setShowEmojiPicker(false)}
+                          >
+                            Close
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="btn-group me-2" role="group">
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-secondary"
-                      onClick={() => insertFormatting('link')}
-                      title="Link"
-                    >
-                      <Link size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-secondary"
-                      onClick={() => insertFormatting('list')}
-                      title="List"
-                    >
-                      <List size={14} />
-                    </button>
-                  </div>
-                  <div className="btn-group" role="group">
-                    <button
-                      type="button"
-                      className={`btn btn-sm ${isPreview ? 'btn-secondary' : 'btn-outline-secondary'}`}
-                      onClick={() => setIsPreview(!isPreview)}
-                      title="Preview"
-                    >
-                      <Eye size={14} />
-                    </button>
-                  </div>
+                  
+                  <div className="border-start mx-2"></div>
+                  
+                  {/* Preview Toggle */}
+                  <button
+                    type="button"
+                    className={`btn btn-sm ${isPreview ? 'btn-secondary' : 'btn-outline-secondary'}`}
+                    onClick={() => setIsPreview(!isPreview)}
+                    title="Preview"
+                  >
+                    <Eye size={14} />
+                  </button>
+                  
+                  <div className="border-start mx-2"></div>
+                  
+                  {/* Text Style */}
+                  <select
+                    className="form-select form-select-sm"
+                    style={{ width: 'auto' }}
+                    onChange={(e) => executeCommand('formatBlock', e.target.value)}
+                    defaultValue=""
+                  >
+                    <option value="" disabled>Format</option>
+                    <option value="h1">Heading 1</option>
+                    <option value="h2">Heading 2</option>
+                    <option value="h3">Heading 3</option>
+                    <option value="p">Paragraph</option>
+                    <option value="pre">Code Block</option>
+                  </select>
+                  
+                  {/* Font Size */}
+                  <select
+                    className="form-select form-select-sm"
+                    style={{ width: 'auto' }}
+                    onChange={(e) => executeCommand('fontSize', e.target.value)}
+                    defaultValue=""
+                  >
+                    <option value="" disabled>Size</option>
+                    <option value="1">Small</option>
+                    <option value="3">Normal</option>
+                    <option value="5">Large</option>
+                    <option value="7">Extra Large</option>
+                  </select>
+                  
+                  {/* Text Color */}
+                  <input
+                    type="color"
+                    className="form-control form-control-sm"
+                    style={{ width: '40px', height: '32px' }}
+                    onChange={(e) => executeCommand('foreColor', e.target.value)}
+                    title="Text Color"
+                  />
                 </div>
               </div>
 
               {/* Editor/Preview */}
               {isPreview ? (
-                <div className="border rounded p-3 mb-3 bg-light" style={{ minHeight: '150px' }}>
+                <div className="border border-top-0 rounded-bottom p-3 mb-3 bg-light" style={{ minHeight: '200px' }}>
                   <div dangerouslySetInnerHTML={{ __html: formatPreview(newAnswer) }} />
                 </div>
               ) : (
-                <textarea
-                  id="answer-textarea"
-                  className="form-control mb-3"
-                  rows="6"
-                  placeholder="Write your answer here... 
-
-Use markdown formatting:
-**bold text**
-*italic text* 
-`code`
-[link text](url)
-- list item"
-                  value={newAnswer}
-                  onChange={(e) => setNewAnswer(e.target.value)}
+                <div
+                  ref={editorRef}
+                  className="form-control"
+                  contentEditable="true"
+                  onInput={handleContentChange}
+                  style={{ 
+                    minHeight: '200px', 
+                    borderTopLeftRadius: 0, 
+                    borderTopRightRadius: 0,
+                    outline: 'none',
+                    marginBottom: '1rem'
+                  }}
+                  suppressContentEditableWarning={true}
+                  data-placeholder="Write your answer here... Use the toolbar above to format your text and add emojis!"
                 />
               )}
 
               <div className="d-flex justify-content-between align-items-center">
                 <small className="text-muted">
-                  {isPreview ? 'Preview mode' : 'Supports markdown formatting'}
+                  {isPreview ? 'Preview mode - Click the eye icon to continue editing' : 'Use the rich text editor above to format your answer'}
                 </small>
                 <button 
                   className="btn btn-success"
@@ -360,6 +499,33 @@ Use markdown formatting:
         }
         .btn:disabled {
           opacity: 0.6;
+        }
+        [contenteditable]:empty:before {
+          content: attr(data-placeholder);
+          color: #6c757d;
+          font-style: italic;
+        }
+        [contenteditable]:focus:before {
+          content: "";
+        }
+        [contenteditable] blockquote {
+          border-left: 4px solid #007bff;
+          padding-left: 1rem;
+          margin-left: 0;
+          color: #6c757d;
+        }
+        [contenteditable] pre {
+          background-color: #f8f9fa;
+          padding: 0.75rem;
+          border-radius: 0.375rem;
+          font-size: 0.875rem;
+          overflow-x: auto;
+        }
+        [contenteditable] code {
+          background-color: #f8f9fa;
+          padding: 0.125rem 0.25rem;
+          border-radius: 0.25rem;
+          font-size: 0.875rem;
         }
       `}</style>
     </div>

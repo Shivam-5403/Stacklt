@@ -8,6 +8,7 @@ import LoginComponent from './components/LoginComponent'
 import { isUserLoggedIn } from './services/AuthService'
 import HomePage from './components/HomeComponent'
 import AskQuestion from './components/AskComponent'
+import QuestionPage from './components/Question'
 // App is Base or root component
 function App() {
 
@@ -42,6 +43,7 @@ function App() {
 
         {/* http://localhost:8080/register */}
         <Route path='/register' element = { <RegisterComponent/> }></Route>
+        <Route path='/question' element = { <QuestionPage/> }></Route>
 
            
       </Routes>
