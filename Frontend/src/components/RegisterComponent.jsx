@@ -38,7 +38,7 @@ const RegisterComponent = () => {
                                 <div className='col-md-9'>
                                     <input
                                         type='text'
-                                        name='name'
+                                        name='username'
                                         className='form-control'
                                         placeholder='Enter name'
                                         value={username}
