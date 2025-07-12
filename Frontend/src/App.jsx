@@ -43,7 +43,7 @@ function App() {
 
         {/* http://localhost:8080/register */}
         <Route path='/register' element = { <RegisterComponent/> }></Route>
-        <Route path='/question' element = { <QuestionPage/> }></Route>
+        <Route path='/question/:id' element = { <QuestionPage/> }></Route>
 
            
       </Routes>

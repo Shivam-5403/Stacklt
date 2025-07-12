@@ -1,30 +1,22 @@
-import React, { useState, useRef } from "react";
-import { Search, MessageCircle, CheckCircle, Clock, Plus, ThumbsUp, ThumbsDown, Edit3, Bold, Italic, Code, Link, List, Eye, Underline, ListOrdered, Quote, AlignLeft, AlignCenter, AlignRight, Smile } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import { Search, MessageCircle, CheckCircle, Clock, Plus, ThumbsUp, ThumbsDown, Edit3, Bold, Italic, Code, Link, List, Eye, Underline, ListOrdered, Quote, AlignLeft, AlignCenter, AlignRight, Smile, Award } from "lucide-react";
 
 const QuestionPage = () => {
-  const [answers, setAnswers] = useState([
-    {
-      id: 1,
-      content: `You can use ||, + operator, or CONCAT() function. Example: 
-        <pre><code>SELECT first_name || ' ' || last_name AS full_name FROM users;</code></pre>`,
-      votes: 5,
-      author: "John Doe",
-      createdAt: "2 hours ago"
-    },
-    {
-      id: 2,
-      content: "Details about how SQL handles nulls and concatenation in edge cases. When using the || operator, if any operand is NULL, the result will be NULL.",
-      votes: 2,
-      author: "Jane Smith",
-      createdAt: "1 hour ago"
-    },
-  ]);
-
+  const [questionData, setQuestionData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [newAnswer, setNewAnswer] = useState("");
   const [votedAnswers, setVotedAnswers] = useState({});
   const [isPreview, setIsPreview] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const editorRef = useRef(null);
+
+  // Extract question ID from URL
+  const getQuestionIdFromUrl = () => {
+    const path = window.location.pathname;
+    const segments = path.split('/');
+    return segments[segments.length - 1]; // Get the last segment
+  };
 
   const emojis = [
     '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃',
@@ -35,43 +27,118 @@ const QuestionPage = () => {
     '💡', '🔥', '⭐', '✨', '💯', '❤️', '💖', '💕', '💗', '💓'
   ];
 
-  const handleVote = (id, direction) => {
-    const currentVote = votedAnswers[id];
-    
-    // If clicking the same vote, remove it (toggle off)
-    if (currentVote === direction) {
-      setAnswers((prev) =>
-        prev.map((ans) =>
-          ans.id === id 
-            ? { ...ans, votes: direction === 'up' ? ans.votes - 1 : ans.votes + 1 } 
-            : ans
-        )
-      );
-      setVotedAnswers(prev => ({ ...prev, [id]: null }));
-      return;
+  // Fetch question data from backend
+  const fetchQuestionData = async (questionId) => {
+    try {
+      setLoading(true);
+      // Replace with your actual API endpoint
+      const response = await fetch(`http://localhost:5000/api/questions/${questionId}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch question data');
+      }
+      
+      const data = await response.json();
+      setQuestionData(data);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+      console.error('Error fetching question:', err);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  // Format date
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
     
-    // Calculate vote change
-    let voteChange = 0;
-    if (currentVote === 'up' && direction === 'down') {
-      voteChange = -2; // Remove upvote and add downvote
-    } else if (currentVote === 'down' && direction === 'up') {
-      voteChange = 2; // Remove downvote and add upvote
-    } else if (direction === 'up') {
-      voteChange = 1; // First time upvote
+    if (diffInHours < 1) return 'Just now';
+    if (diffInHours < 24) return `${diffInHours} hour${diffInHours === 1 ? '' : 's'} ago`;
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 30) return `${diffInDays} day${diffInDays === 1 ? '' : 's'} ago`;
+    
+    return date.toLocaleDateString();
+  };
+
+  // Load question data on component mount
+  useEffect(() => {
+    const questionId = getQuestionIdFromUrl();
+    if (questionId) {
+      fetchQuestionData(questionId);
     } else {
-      voteChange = -1; // First time downvote
+      setError('No question ID found in URL');
+      setLoading(false);
+    }
+  }, []);
+
+  const handleVote = async (answerId, direction) => {
+    const currentVote = votedAnswers[answerId];
+    
+    // Optimistic update
+    const newVotedAnswers = { ...votedAnswers };
+    let voteChange = 0;
+    
+    if (currentVote === direction) {
+      // Remove vote
+      delete newVotedAnswers[answerId];
+      voteChange = direction === 'up' ? -1 : 1;
+    } else {
+      // Add or change vote
+      newVotedAnswers[answerId] = direction;
+      if (currentVote === 'up' && direction === 'down') {
+        voteChange = -2;
+      } else if (currentVote === 'down' && direction === 'up') {
+        voteChange = 2;
+      } else if (direction === 'up') {
+        voteChange = 1;
+      } else {
+        voteChange = -1;
+      }
     }
     
-    setAnswers((prev) =>
-      prev.map((ans) =>
-        ans.id === id 
-          ? { ...ans, votes: ans.votes + voteChange } 
-          : ans
-      )
-    );
+    setVotedAnswers(newVotedAnswers);
     
-    setVotedAnswers(prev => ({ ...prev, [id]: direction }));
+    // Update question data optimistically
+    setQuestionData(prev => ({
+      ...prev,
+      answers: prev.answers.map(answer =>
+        answer._id === answerId
+          ? { ...answer, votes: answer.votes + voteChange }
+          : answer
+      )
+    }));
+
+    // TODO: Send vote to backend
+    try {
+      // Replace with your actual vote API endpoint
+      const response = await fetch(`/api/answers/${answerId}/vote`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ direction: newVotedAnswers[answerId] || null }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to vote');
+      }
+    } catch (err) {
+      console.error('Error voting:', err);
+      // Revert optimistic update on error
+      setVotedAnswers(votedAnswers);
+      setQuestionData(prev => ({
+        ...prev,
+        answers: prev.answers.map(answer =>
+          answer._id === answerId
+            ? { ...answer, votes: answer.votes - voteChange }
+            : answer
+        )
+      }));
+    }
   };
 
   const executeCommand = (command, value = null) => {
@@ -100,23 +167,38 @@ const QuestionPage = () => {
     setNewAnswer(editorRef.current.innerHTML);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (newAnswer.trim()) {
-      const newId = Math.max(...answers.map(a => a.id), 0) + 1;
-      setAnswers([
-        ...answers,
-        { 
-          id: newId, 
-          content: newAnswer.trim(), 
-          votes: 0,
-          author: "Current User",
-          createdAt: "Just now"
-        },
-      ]);
-      setNewAnswer("");
-      setIsPreview(false);
-      if (editorRef.current) {
-        editorRef.current.innerHTML = "";
+      try {
+        // TODO: Submit answer to backend
+        const response = await fetch(`/api/questions/${questionData._id}/answers`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ content: newAnswer.trim() }),
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to submit answer');
+        }
+        
+        const newAnswerData = await response.json();
+        
+        // Update local state
+        setQuestionData(prev => ({
+          ...prev,
+          answers: [...prev.answers, newAnswerData]
+        }));
+        
+        setNewAnswer("");
+        setIsPreview(false);
+        if (editorRef.current) {
+          editorRef.current.innerHTML = "";
+        }
+      } catch (err) {
+        console.error('Error submitting answer:', err);
+        alert('Failed to submit answer. Please try again.');
       }
     }
   };
@@ -129,6 +211,70 @@ const QuestionPage = () => {
     return text || "Nothing to preview...";
   };
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="container-fluid py-4">
+        <div className="row justify-content-center">
+          <div className="col-lg-10 col-xl-8">
+            <div className="card shadow-sm">
+              <div className="card-body text-center p-5">
+                <div className="spinner-border text-primary mb-3" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+                <h5>Loading question...</h5>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="container-fluid py-4">
+        <div className="row justify-content-center">
+          <div className="col-lg-10 col-xl-8">
+            <div className="card shadow-sm">
+              <div className="card-body text-center p-5">
+                <div className="text-danger mb-3">
+                  <MessageCircle size={48} />
+                </div>
+                <h5 className="text-danger">Error Loading Question</h5>
+                <p className="text-muted">{error}</p>
+                <button 
+                  className="btn btn-primary"
+                  onClick={() => window.location.reload()}
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // No data state
+  if (!questionData) {
+    return (
+      <div className="container-fluid py-4">
+        <div className="row justify-content-center">
+          <div className="col-lg-10 col-xl-8">
+            <div className="card shadow-sm">
+              <div className="card-body text-center p-5">
+                <h5>Question not found</h5>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container-fluid py-4">
       <div className="row justify-content-center">
@@ -138,27 +284,25 @@ const QuestionPage = () => {
             <div className="card-body">
               <div className="d-flex align-items-center mb-3">
                 <MessageCircle className="me-2 text-primary" size={24} />
-                <h1 className="h4 mb-0 fw-bold">How to join two columns in SQL?</h1>
+                <h1 className="h4 mb-0 fw-bold">{questionData.title}</h1>
               </div>
               
               <div className="mb-3">
                 <p className="text-muted mb-2">
-                  Asked by <strong>Krishna</strong> • 3 hours ago • 
-                  <span className="ms-1">156 views</span>
+                  Asked by <strong>{questionData.author.username}</strong> • 
+                  {formatDate(questionData.createdAt)}
                 </p>
                 <div className="d-flex gap-2">
-                  <span className="badge bg-primary bg-opacity-10 text-primary">sql</span>
-                  <span className="badge bg-primary bg-opacity-10 text-primary">database</span>
-                  <span className="badge bg-primary bg-opacity-10 text-primary">concatenation</span>
+                  {questionData.tags.map(tag => (
+                    <span key={tag._id} className="badge bg-primary bg-opacity-10 text-primary">
+                      {tag.name}
+                    </span>
+                  ))}
                 </div>
               </div>
               
               <div className="question-content">
-                <p className="mb-0">
-                  I have first names in column1 and last names in column2. I want to
-                  combine them into a new column called full_name. What's the best approach 
-                  for this in SQL?
-                </p>
+                <div dangerouslySetInnerHTML={{ __html: questionData.description }} />
               </div>
             </div>
           </div>
@@ -168,49 +312,56 @@ const QuestionPage = () => {
             <div className="card-header bg-light">
               <h5 className="mb-0 d-flex align-items-center">
                 <CheckCircle className="me-2 text-success" size={20} />
-                {answers.length} Answer{answers.length !== 1 ? 's' : ''}
+                {questionData.answers.length} Answer{questionData.answers.length !== 1 ? 's' : ''}
               </h5>
             </div>
             <div className="card-body p-0">
-              {answers.map(({ id, content, votes, author, createdAt }) => (
-                <div key={id} className="border-bottom p-4 last-child-no-border">
+              {questionData.answers.map((answer) => (
+                <div key={answer._id} className="border-bottom p-4 last-child-no-border">
                   <div className="d-flex">
                     {/* Vote Section */}
                     <div className="me-3 text-center" style={{ minWidth: '60px' }}>
                       <button
                         className={`btn btn-sm btn-outline-success mb-1 ${
-                          votedAnswers[id] === 'up' ? 'btn-success text-white' : ''
+                          votedAnswers[answer._id] === 'up' ? 'btn-success text-white' : ''
                         }`}
-                        onClick={() => handleVote(id, 'up')}
+                        onClick={() => handleVote(answer._id, 'up')}
                       >
                         <ThumbsUp size={16} />
                       </button>
-                      <div className="fw-bold text-dark">{votes}</div>
+                      <div className="fw-bold text-dark">{answer.votes}</div>
                       <button
                         className={`btn btn-sm btn-outline-danger mt-1 ${
-                          votedAnswers[id] === 'down' ? 'btn-danger text-white' : ''
+                          votedAnswers[answer._id] === 'down' ? 'btn-danger text-white' : ''
                         }`}
-                        onClick={() => handleVote(id, 'down')}
+                        onClick={() => handleVote(answer._id, 'down')}
                       >
                         <ThumbsDown size={16} />
                       </button>
+                      {/* Accepted Answer Badge */}
+                      {questionData.acceptedAnswer === answer._id && (
+                        <div className="mt-2">
+                          <Award className="text-success" size={20} title="Accepted Answer" />
+                        </div>
+                      )}
                     </div>
 
                     {/* Answer Content */}
                     <div className="flex-grow-1">
                       <div 
                         className="mb-3"
-                        dangerouslySetInnerHTML={{ __html: renderContent(content) }}
+                        dangerouslySetInnerHTML={{ __html: renderContent(answer.content) }}
                       />
                       <div className="d-flex justify-content-between align-items-center text-muted small">
                         <div>
-                          answered by <strong className="text-dark">{author}</strong> • {createdAt}
+                          answered by <strong className="text-dark">{answer.author.username}</strong> • 
+                          {formatDate(answer.createdAt)}
                         </div>
                         <div>
-                          {votedAnswers[id] === 'up' && (
+                          {votedAnswers[answer._id] === 'up' && (
                             <span className="text-success">✓ Upvoted</span>
                           )}
-                          {votedAnswers[id] === 'down' && (
+                          {votedAnswers[answer._id] === 'down' && (
                             <span className="text-danger">✓ Downvoted</span>
                           )}
                         </div>
@@ -526,6 +677,10 @@ const QuestionPage = () => {
           padding: 0.125rem 0.25rem;
           border-radius: 0.25rem;
           font-size: 0.875rem;
+        }
+        .spinner-border {
+          width: 3rem;
+          height: 3rem;
         }
       `}</style>
     </div>
