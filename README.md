@@ -11,7 +11,7 @@ StackIt is a streamlined question-and-answer platform built to foster collaborat
 - Designed for clarity and engagement
 
 
-## Team : TechTitans
+## Team : Team 3897
 Details : 
 - **Shivam Bhundiya** — [shivam.bhundiya5403@gmail.com](mailto:shivam.bhundiya5403@gmail.com)  
 - **Sumit Raval** — [sumitraval120@gmail.com](mailto:sumitraval120@gmail.com)  

@@ -4,7 +4,7 @@ import {
     getAllQuestions,
     getQuestionById
 } from '../controllers/questionController.js';
-import { protect } from '../middlewares/authMiddleware.js';
+import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
