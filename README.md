@@ -1,3 +1,9 @@
+Team Name : TechTitans
+Details : 
+Shivam Bhundiya : shivam.bhundiya5403@gmail.com
+Sumit Raval : sumitraval120@gmail.com
+Bhavya Prajapati : bhavyaprajapati245@gmail.com
+
 # Stacklt
 A Minimal Q&amp;A Forum Platform
 Overview 
