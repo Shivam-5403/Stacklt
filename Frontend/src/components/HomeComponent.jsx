@@ -107,7 +107,7 @@ const HomePage = () => {
                           <Clock className="me-2 text-warning flex-shrink-0" size={20} />
                         )}
                         <h3 className="h5 mb-0 text-dark text-truncate">
-                          <a href="#" className="text-decoration-none text-dark hover-text-primary">
+                          <a href="/question" className="text-decoration-none text-dark hover-text-primary">
                             {question.title}
                           </a>
                         </h3>
