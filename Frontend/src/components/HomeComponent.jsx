@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, MessageCircle, CheckCircle, Clock, Plus, CloudCog } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { isUserLoggedIn } from '../services/AuthService';
 
 const HomePage = () => {
   const [filter, setFilter] = useState('Newest');
@@ -51,7 +52,12 @@ const HomePage = () => {
   }, []);
 
   const handleAskQuestion = () => {
-    navigator('/ask-question');
+    const check = isUserLoggedIn()
+    if (check == true){
+      navigator('/ask-question');
+    }else{
+      navigator('/login')
+    }
   };
 
   const handleFilterClick = (selectedFilter) => {
