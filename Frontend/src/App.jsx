@@ -1,14 +1,15 @@
 
 import './App.css'
+import ListTodoComponent from './components/ListTodoComponent'
 import HeaderComponent from './components/HeaderComponent'
 import FooterComponent from './components/FooterComponent'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import TodoComponent from './components/TodoComponent'
 import RegisterComponent from './components/RegisterComponent'
 import LoginComponent from './components/LoginComponent'
 import { isUserLoggedIn } from './services/AuthService'
 import HomePage from './components/HomeComponent'
 import AskQuestion from './components/AskComponent'
-import QuestionPage from './components/Question'
 // App is Base or root component
 function App() {
 
@@ -32,20 +33,16 @@ function App() {
         <Route path='/login' element={ <LoginComponent/> }></Route>
 
         {/* http://localhost:8080  */}
-        {/* <Route path='/todos' element={ 
+        <Route path='/todos' element={ 
           <AuthenticateRoute>
             <ListTodoComponent/>
           </AuthenticateRoute>
            }>
 
 
-        </Route> */}
+        </Route>
         <Route path='/' element={ 
             <HomePage/>
-           }>
-        </Route>
-        <Route path='/question' element={ 
-            <QuestionPage/>
            }>
         </Route>
 
@@ -55,18 +52,18 @@ function App() {
         </Route>
 
         {/* http://localhost:8080/add-todo */}
-        {/* <Route path='/add-todo' element = {
+        <Route path='/add-todo' element = {
           <AuthenticateRoute>
             <TodoComponent/>
 
           </AuthenticateRoute>
-             }></Route> */}
+             }></Route>
 
         {/* http://localhost:8080/update-todo */}
-        {/* <Route path='/update-todo/:id' element = { <AuthenticateRoute>
+        <Route path='/update-todo/:id' element = { <AuthenticateRoute>
             <TodoComponent/>
  
-          </AuthenticateRoute> }></Route> */}
+          </AuthenticateRoute> }></Route>
 
         {/* http://localhost:8080/register */}
         <Route path='/register' element = { <RegisterComponent/> }></Route>

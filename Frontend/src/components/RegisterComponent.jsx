@@ -3,7 +3,7 @@ import { registerAPICall } from '../services/AuthService';
 
 const RegisterComponent = () => {
 
-    const [name, setName ] = useState('')
+    const [username, setUserName ] = useState('')
     const [email, setEmail ] = useState('')
     const [password, setPassword ] = useState('')
 
@@ -11,7 +11,7 @@ const RegisterComponent = () => {
 
         e.preventDefault();
 
-        const register = {name, email, password}
+        const register = {username, email, password}
         console.log(register);
 
         registerAPICall(register).then((response)=>{
@@ -41,8 +41,8 @@ const RegisterComponent = () => {
                                         name='name'
                                         className='form-control'
                                         placeholder='Enter name'
-                                        value={name}
-                                        onChange={(e)=>setName(e.target.value)}
+                                        value={username}
+                                        onChange={(e)=>setUserName(e.target.value)}
                                     ></input>
                                 </div>
                             </div>
