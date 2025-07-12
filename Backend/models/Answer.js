@@ -11,10 +11,11 @@ const answerSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
-    questionId: {
+    question: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Question',
-        required: true
+        required: true,
+        index: true 
     },
     votes: {
         type: Number,

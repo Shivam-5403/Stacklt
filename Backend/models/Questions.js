@@ -10,7 +10,13 @@ const questionSchema = new mongoose.Schema({
         type: String, // HTML from rich text
         required: true
     },
-    tags: [String],
+    tags: [
+        {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Tag',
+        required: true
+        }
+    ],
     author: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',

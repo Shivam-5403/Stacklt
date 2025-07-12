@@ -7,10 +7,11 @@ const notificationSchema = new mongoose.Schema({
         enum: ['answer', 'comment', 'mention'],
         required: true
     },
-    userId: {
+    user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: true
+        required: true,
+        index: true
     },
     fromUser: {
         type: mongoose.Schema.Types.ObjectId,
@@ -20,7 +21,7 @@ const notificationSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Question'
     },
-    answerId: {
+    answer: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Answer'
     },
@@ -29,9 +30,23 @@ const notificationSchema = new mongoose.Schema({
     },
     isRead: {
         type: Boolean,
-        default: false
+        default: false,
+        index: true
     }
 }, { timestamps: true });
+
+notificationSchema.pre('validate', function(next) {
+  if (this.type === 'answer' && !this.answer) {
+    return next(new Error('Notifications of type "answer" must include an answer ID.'));
+  }
+  if (this.type === 'comment' && !this.answer) {
+    return next(new Error('Notifications of type "comment" must include an answer ID.'));
+  }
+  if (this.type === 'mention' && !this.question && !this.answer) {
+    return next(new Error('Notifications of type "mention" must include a target question or answer.'));
+  }
+  next();
+});
 
 const Notification = mongoose.model('Notification', notificationSchema);
 export default Notification;
