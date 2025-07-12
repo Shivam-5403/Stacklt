@@ -19,30 +19,80 @@ const HomePage = () => {
         setLoading(true);
         const response = await axios.get('http://localhost:5000/api/questions');
         // Transform backend data to match frontend structure
-        const transformedQuestions = response.data.map((q, index) => ({
-          id: q._id || index + 1,
+        const transformedQuestions = response.data.map((q) => ({
+          id: q._id, // Use the actual MongoDB _id
           title: q.title,
-          answered: q.acceptedAnswer !== null,
-          votes: q.votes || 0,
+          description: q.description,
+answered: (q.answers && q.answers.length > 0) || (q.acceptedAnswer !== null && q.acceptedAnswer !== undefined),
+          votes: q.votes || 0, // Default to 0 if not provided by API
           answers: q.answers ? q.answers.length : 0,
-          views: q.views || 0,
-          tags: q.tags ? q.tags.map(tag => tag.name.toLowerCase()) : [],
+          views: q.views || Math.floor(Math.random() * 200) + 10, // Random views if not provided
+          tags: q.tags ? q.tags.map(tag => 
+            typeof tag === 'string' ? tag.toLowerCase() : tag.name.toLowerCase()
+          ) : [],
+          author: q.author ? q.author.username : 'Unknown',
           createdAt: q.createdAt || new Date().toISOString()
         }));
         
         setQuestions(transformedQuestions);
         setError(null);
+        console.log('Fetched questions:', transformedQuestions); // Debug log
       } catch (err) {
         console.error('Error fetching questions:', err);
         setError('Failed to load questions. Please try again later.');
         // Fallback to dummy data if backend is unavailable
-        setQuestions([
-          { id: 1, title: "How to use React hooks?", answered: true, votes: 23, answers: 3, views: 156, tags: ['react', 'hooks'] },
-          { id: 2, title: "What is JWT authentication?", answered: false, votes: 15, answers: 1, views: 89, tags: ['jwt', 'auth'] },
-          { id: 3, title: "Styling in React using Tailwind", answered: true, votes: 31, answers: 5, views: 234, tags: ['react', 'tailwind'] },
-          { id: 4, title: "How to implement dark mode in React?", answered: false, votes: 8, answers: 0, views: 45, tags: ['react', 'dark-mode'] },
-          { id: 5, title: "Best practices for API error handling", answered: true, votes: 42, answers: 7, views: 312, tags: ['api', 'error-handling'] },
-        ]);
+        // setQuestions([
+        //   { 
+        //     id: 1, 
+        //     title: "How to use React hooks?", 
+        //     answered: true, 
+        //     votes: 23, 
+        //     answers: 3, 
+        //     views: 156, 
+        //     tags: ['react', 'hooks'],
+        //     createdAt: new Date(Date.now() - 86400000).toISOString() // 1 day ago
+        //   },
+        //   { 
+        //     id: 2, 
+        //     title: "What is JWT authentication?", 
+        //     answered: false, 
+        //     votes: 15, 
+        //     answers: 1, 
+        //     views: 89, 
+        //     tags: ['jwt', 'auth'],
+        //     createdAt: new Date(Date.now() - 172800000).toISOString() // 2 days ago
+        //   },
+        //   { 
+        //     id: 3, 
+        //     title: "Styling in React using Tailwind", 
+        //     answered: true, 
+        //     votes: 31, 
+        //     answers: 5, 
+        //     views: 234, 
+        //     tags: ['react', 'tailwind'],
+        //     createdAt: new Date(Date.now() - 259200000).toISOString() // 3 days ago
+        //   },
+        //   { 
+        //     id: 4, 
+        //     title: "How to implement dark mode in React?", 
+        //     answered: false, 
+        //     votes: 8, 
+        //     answers: 0, 
+        //     views: 45, 
+        //     tags: ['react', 'dark-mode'],
+        //     createdAt: new Date(Date.now() - 345600000).toISOString() // 4 days ago
+        //   },
+        //   { 
+        //     id: 5, 
+        //     title: "Best practices for API error handling", 
+        //     answered: true, 
+        //     votes: 42, 
+        //     answers: 7, 
+        //     views: 312, 
+        //     tags: ['api', 'error-handling'],
+        //     createdAt: new Date(Date.now() - 432000000).toISOString() // 5 days ago
+        //   },
+        // ]);
       } finally {
         setLoading(false);
       }
@@ -52,11 +102,11 @@ const HomePage = () => {
   }, []);
 
   const handleAskQuestion = () => {
-    const check = isUserLoggedIn()
-    if (check == true){
+    const check = isUserLoggedIn();
+    if (check === true) {
       navigator('/ask-question');
-    }else{
-      navigator('/login')
+    } else {
+      navigator('/login');
     }
   };
 
@@ -65,29 +115,52 @@ const HomePage = () => {
   };
 
   const handleQuestionClick = (questionId) => {
-    navigator(`/question/${questionId}`);
+    console.log('Navigating to question:', questionId); // Debug log
+    // Make sure we're using the actual _id from MongoDB
+    if (questionId) {
+      navigator(`/question/${questionId}`);
+    } else {
+      console.error('Question ID is undefined');
+    }
   };
 
-  // Filter and search questions
-  const filteredQuestions = questions.filter((question) => {
-    // Apply filter
-    if (filter === 'Unanswered') return !question.answered;
-    if (filter === 'Answered') return question.answered;
-    return true;
-  }).filter((q) =>
+  // Filter questions based on search query
+  const searchFilteredQuestions = questions.filter((q) =>
     q.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     q.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  // Filter questions based on selected filter
+  const filteredQuestions = searchFilteredQuestions.filter((question) => {
+    switch (filter) {
+      case 'Unanswered':
+        return !question.answered;
+      case 'Answered':
+        return question.answered;
+      case 'Most Voted':
+        return true; // Show all for sorting
+      case 'Newest':
+      default:
+        return true; // Show all for sorting
+    }
+  });
+
   // Sort questions based on filter
   const sortedQuestions = [...filteredQuestions].sort((a, b) => {
-    if (filter === 'Newest') {
-      return new Date(b.createdAt) - new Date(a.createdAt);
+    switch (filter) {
+      case 'Newest':
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      case 'Most Voted':
+        return b.votes - a.votes;
+      case 'Unanswered':
+        // Sort unanswered by newest first
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      case 'Answered':
+        // Sort answered by newest first
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      default:
+        return new Date(b.createdAt) - new Date(a.createdAt);
     }
-    if (filter === 'Most Voted') {
-      return b.votes - a.votes;
-    }
-    return 0;
   });
 
   if (loading) {
@@ -176,13 +249,30 @@ const HomePage = () => {
               </button>
             ))}
           </div>
+
+          {/* Results Info */}
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <p className="text-muted mb-0 small">
+              Showing {sortedQuestions.length} question{sortedQuestions.length !== 1 ? 's' : ''} 
+              {searchQuery && ` for "${searchQuery}"`}
+              {filter !== 'Newest' && ` filtered by ${filter}`}
+            </p>
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery('')}
+                className="btn btn-link btn-sm text-decoration-none p-0"
+              >
+                Clear search
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Questions List */}
         <div className="row g-3">
           {sortedQuestions.map((question) => (
             <div key={question.id} className="col-12">
-              <div className="card h-100 shadow-sm border-0">
+              <div className="card h-100 shadow-sm border-0 question-card">
                 <div className="card-body">
                   <div className="d-flex flex-column flex-md-row">
                     <div className="flex-grow-1">
@@ -195,8 +285,9 @@ const HomePage = () => {
                         <h3 className="h5 mb-0 text-dark">
                           <button 
                             onClick={() => handleQuestionClick(question.id)}
-                            className="btn btn-link p-0 text-decoration-none text-dark hover-text-primary text-start"
+                            className="btn btn-link p-0 text-decoration-none text-dark question-title text-start"
                             style={{ textAlign: 'left' }}
+                            title={`Navigate to question: ${question.id}`}
                           >
                             {question.title}
                           </button>
@@ -224,6 +315,16 @@ const HomePage = () => {
                         <span>
                           <span className="fw-medium text-dark">{question.views}</span> views
                         </span>
+                        <span>
+                          <span className="fw-medium text-muted">
+                            by {question.author}
+                          </span>
+                        </span>
+                        <span>
+                          <span className="fw-medium text-muted">
+                            {new Date(question.createdAt).toLocaleDateString()}
+                          </span>
+                        </span>
                       </div>
                     </div>
                     
@@ -249,7 +350,9 @@ const HomePage = () => {
                 <h3 className="h5 text-dark mb-2">No questions found</h3>
                 <p className="text-muted">
                   {searchQuery ? 
-                    'Try adjusting your search criteria.' : 
+                    'Try adjusting your search criteria or clearing your search.' : 
+                    filter !== 'Newest' ? 
+                    `No ${filter.toLowerCase()} questions found.` :
                     'Be the first to ask a question!'
                   }
                 </p>
@@ -276,19 +379,20 @@ const HomePage = () => {
               You can view questions without logging in.
             </p>
             <p className="text-muted small">
-              {sortedQuestions.length} question{sortedQuestions.length !== 1 ? 's' : ''} found
+              Total: {questions.length} question{questions.length !== 1 ? 's' : ''}
             </p>
           </div>
         </div>
       </footer>
 
       <style jsx="true">{`
-        .hover-text-primary:hover {
+        .question-title:hover {
           color: var(--bs-primary) !important;
         }
-        .card:hover {
+        .question-card:hover {
           transform: translateY(-2px);
           transition: transform 0.2s ease;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
         }
         .gap-1 > * {
           margin-right: 0.25rem !important;
@@ -301,6 +405,12 @@ const HomePage = () => {
         .gap-3 > * {
           margin-right: 1rem !important;
           margin-bottom: 1rem !important;
+        }
+        .question-card {
+          transition: all 0.2s ease;
+        }
+        .question-title {
+          transition: color 0.2s ease;
         }
       `}</style>
     </div>

@@ -1,4 +1,4 @@
- import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Search, MessageCircle, CheckCircle, Clock, Plus, ThumbsUp, ThumbsDown, Edit3, Bold, Italic, Code, Link, List, Eye, Underline, ListOrdered, Quote, AlignLeft, AlignCenter, AlignRight, Smile, Award } from "lucide-react";
 import { isUserLoggedIn } from '../services/AuthService';
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +11,7 @@ const QuestionPage = () => {
   const [votedAnswers, setVotedAnswers] = useState({});
   const [isPreview, setIsPreview] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [submittingAnswer, setSubmittingAnswer] = useState(false);
   const editorRef = useRef(null);
   const navigator = useNavigate();
 
@@ -30,55 +31,27 @@ const QuestionPage = () => {
     '💡', '🔥', '⭐', '✨', '💯', '❤️', '💖', '💕', '💗', '💓'
   ];
 
-  // Mock data for demonstration
-  const mockQuestionData = {
-    _id: "mock-question-id",
-    title: "How to implement voting functionality in React?",
-    description: "I'm trying to create a voting system for answers but the buttons are not working properly. Can someone help me debug this?",
-    author: { username: "developer123" },
-    createdAt: new Date().toISOString(),
-    tags: [
-      { _id: "1", name: "react" },
-      { _id: "2", name: "javascript" },
-      { _id: "3", name: "frontend" }
-    ],
-    acceptedAnswer: "mock-answer-2",
-    answers: [
-      {
-        _id: "mock-answer-1",
-        content: "You need to make sure your API endpoint is correct and handle errors properly.",
-        author: { username: "helper1" },
-        votes: 5,
-        createdAt: new Date(Date.now() - 86400000).toISOString()
-      },
-      {
-        _id: "mock-answer-2",
-        content: "The issue is likely in your vote handling logic. Make sure you're updating state correctly and handling the API response.",
-        author: { username: "expert_dev" },
-        votes: 12,
-        createdAt: new Date(Date.now() - 43200000).toISOString()
-      },
-      {
-        _id: "mock-answer-3",
-        content: "Check your network requests and make sure the backend is properly configured.",
-        author: { username: "backend_guru" },
-        votes: -2,
-        createdAt: new Date(Date.now() - 7200000).toISOString()
-      }
-    ]
-  };
-
-  // Mock fetch function for demonstration
+  // Fetch question data from API
   const fetchQuestionData = async (questionId) => {
     try {
       setLoading(true);
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Use mock data for demonstration
-      setQuestionData(mockQuestionData);
       setError(null);
+      
+      const response = await fetch(`http://localhost:5000/api/questions/${questionId}`);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('Question not found');
+        } else if (response.status === 500) {
+          throw new Error('Server error. Please try again later.');
+        } else {
+          throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
+      }
+      
+      const data = await response.json();
+      setQuestionData(data);
+      
     } catch (err) {
       setError(err.message);
       console.error('Error fetching question:', err);
@@ -104,13 +77,29 @@ const QuestionPage = () => {
 
   // Load question data on component mount
   useEffect(() => {
-    const questionId = getQuestionIdFromUrl() || "mock-question-id";
-    fetchQuestionData(questionId);
+    const questionId = getQuestionIdFromUrl();
+    if (questionId) {
+      fetchQuestionData(questionId);
+    } else {
+      setError('Invalid question ID');
+      setLoading(false);
+    }
   }, []);
 
-  // FIXED: Vote handling with proper error handling and state management
+  // Vote handling with proper API integration
   const handleVote = async (answerId, direction) => {
-    console.log('Vote clicked:', answerId, direction); // Debug log
+    console.log('Vote clicked:', answerId, direction);
+    
+    // Check if user is logged in
+    if (!isUserLoggedIn()) {
+      const isConfirmed = window.confirm("You need to be logged in to vote. Click OK to login or Cancel to register.");
+      if (isConfirmed) {
+        navigator('/login');
+      } else {
+        navigator('/register');
+      }
+      return;
+    }
     
     try {
       const currentVote = votedAnswers[answerId];
@@ -160,54 +149,33 @@ const QuestionPage = () => {
         )
       }));
 
-      // FIXED: Proper API endpoint and error handling
-      // Mock API call for demonstration
-      const mockApiCall = async () => {
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Simulate random API failures for demonstration
-        if (Math.random() < 0.2) {
-          throw new Error('Network error or server unavailable');
-        }
-        
-        return { success: true, newVote: newVoteState };
-      };
-
-      try {
-        const result = await mockApiCall();
-        console.log('Vote API response:', result);
-        
-        // In real implementation, you would use:
-        // const response = await fetch(`http://localhost:5000/api/answers/${answerId}/vote`, {
-        //   method: 'POST',
-        //   headers: {
-        //     'Content-Type': 'application/json',
-        //     'Authorization': `Bearer ${localStorage.getItem('token')}` // Fixed: Added Bearer prefix
-        //   },
-        //   body: JSON.stringify({ direction: newVoteState }),
-        // });
-        // 
-        // if (!response.ok) {
-        //   throw new Error(`HTTP error! status: ${response.status}`);
-        // }
-        // 
-        // const data = await response.json();
-        
-      } catch (apiError) {
-        console.error('API Error:', apiError);
-        
-        // Rollback optimistic updates
-        setVotedAnswers(previousVotedAnswers);
-        setQuestionData(previousQuestionData);
-        
-        // Show user-friendly error message
-        alert(`Failed to vote: ${apiError.message}. Please try again.`);
+      // API call to update vote
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/answers/${answerId}/vote`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `${token}`
+        },
+        body: JSON.stringify({ direction: newVoteState }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-    } catch (error) {
-      console.error('Unexpected error in handleVote:', error);
-      alert('An unexpected error occurred. Please refresh the page and try again.');
+      const result = await response.json();
+      console.log('Vote API response:', result);
+      
+    } catch (apiError) {
+      console.error('API Error:', apiError);
+      
+      // Rollback optimistic updates
+      setVotedAnswers(previousVotedAnswers);
+      setQuestionData(previousQuestionData);
+      
+      // Show user-friendly error message
+      alert(`Failed to vote: ${apiError.message}. Please try again.`);
     }
   };
 
@@ -240,67 +208,73 @@ const QuestionPage = () => {
   };
 
   const handleSubmit = async () => {
-    const check = isUserLoggedIn()
-    if (check == true){
-    if (newAnswer.trim()) {
-      try {
-        console.log('Submitting answer for question:', questionData._id);
-        
-        // Mock API call for demonstration
-        const mockSubmitAnswer = async () => {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          return {
-            _id: `mock-answer-${Date.now()}`,
-            content: newAnswer.trim(),
-            author: { username: "current_user" },
-            votes: 0,
-            createdAt: new Date().toISOString()
-          };
-        };
-
-        const newAnswerData = await mockSubmitAnswer();
-        
-        // In real implementation:
-        // const response = await fetch(`http://localhost:5000/api/answers/${questionData._id}`, {
-        //   method: 'POST',
-        //   headers: {
-        //     'Content-Type': 'application/json',
-        //     'Authorization': `Bearer ${localStorage.getItem('token')}`
-        //   },
-        //   body: JSON.stringify({ content: newAnswer.trim() }),
-        // });
-        
-        // Update local state
-        setQuestionData(prev => ({
-          ...prev,
-          answers: [...prev.answers, newAnswerData]
-        }));
-        
-        // Reset form
-        setNewAnswer("");
-        setIsPreview(false);
-        if (editorRef.current) {
-          editorRef.current.innerHTML = "";
-        }
-        
-        console.log('Answer submitted successfully');
-      } catch (err) {
-        console.error('Error submitting answer:', err);
-        
-      }
-    }
-  }else{
-      const isConfirmed = window.confirm("Are you StackIt User ? If Yes then Click Ok to login In order to submit the answer.");
+    const check = isUserLoggedIn();
+    
+    if (!check) {
+      const isConfirmed = window.confirm("Are you StackIt User? If Yes then Click Ok to login in order to submit the answer.");
       if (isConfirmed) {
-      console.log("User clicked OK");
-      navigator('/login');
-      // Perform actions if OK is clicked
-    } else {
-      console.log("User clicked Cancel");
-      navigator('/register');
-      // Perform actions if Cancel is clicked
+        console.log("User clicked OK");
+        navigator('/login');
+      } else {
+        console.log("User clicked Cancel");
+        navigator('/register');
+      }
+      return;
     }
-  }
+    
+    if (!newAnswer.trim()) {
+      alert('Please enter your answer before submitting.');
+      return;
+    }
+    
+    try {
+      setSubmittingAnswer(true);
+      console.log('Submitting answer for question:', questionData._id);
+      
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/answers/${questionData._id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `${token}`
+        },
+        body: JSON.stringify({ content: newAnswer.trim() }),
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('You need to be logged in to submit an answer.');
+        } else if (response.status === 403) {
+          throw new Error('You do not have permission to submit an answer.');
+        } else {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+      }
+      
+      const newAnswerData = await response.json();
+      
+      // Update local state
+      setQuestionData(prev => ({
+        ...prev,
+        answers: [...prev.answers, newAnswerData]
+      }));
+      
+      // Reset form
+      setNewAnswer("");
+      setIsPreview(false);
+      if (editorRef.current) {
+        editorRef.current.innerHTML = "";
+      }
+      
+      console.log('Answer submitted successfully');
+      alert('Your answer has been submitted successfully!');
+      
+    } catch (err) {
+      console.error('Error submitting answer:', err);
+      alert(`Error submitting answer: ${err.message}`);
+    } finally {
+      setSubmittingAnswer(false);
+    }
   };
 
   const renderContent = (content) => {
@@ -346,7 +320,14 @@ const QuestionPage = () => {
                 <p className="text-muted">{error}</p>
                 <button 
                   className="btn btn-primary"
-                  onClick={() => window.location.reload()}
+                  onClick={() => {
+                    const questionId = getQuestionIdFromUrl();
+                    if (questionId) {
+                      fetchQuestionData(questionId);
+                    } else {
+                      window.location.reload();
+                    }
+                  }}
                 >
                   Retry
                 </button>
@@ -389,11 +370,11 @@ const QuestionPage = () => {
               
               <div className="mb-3">
                 <p className="text-muted mb-2">
-                  Asked by <strong>{questionData.author.username}</strong> • 
+                  Asked by <strong>{questionData.author?.username || 'Unknown'}</strong> • 
                   {formatDate(questionData.createdAt)}
                 </p>
                 <div className="d-flex gap-2">
-                  {questionData.tags.map(tag => (
+                  {questionData.tags && questionData.tags.map(tag => (
                     <span key={tag._id} className="badge bg-primary bg-opacity-10 text-primary">
                       {tag.name}
                     </span>
@@ -407,89 +388,81 @@ const QuestionPage = () => {
             </div>
           </div>
 
-          {/* Debug Panel */}
-          {/* <div className="card shadow-sm mb-4 border-warning">
-            <div className="card-header bg-warning bg-opacity-10">
-              <h6 className="mb-0 text-warning">🐛 Debug Info (Remove in production)</h6>
-            </div>
-            <div className="card-body">
-              <small className="text-muted">
-                <strong>Current votes:</strong> {JSON.stringify(votedAnswers)}<br/>
-                <strong>Total answers:</strong> {questionData.answers.length}<br/>
-                <strong>Note:</strong> This is a demo with mock data. Click the vote buttons to test functionality.
-              </small>
-            </div>
-          </div> */}
-
           {/* Answers Section */}
           <div className="card shadow-sm mb-4">
             <div className="card-header bg-light">
               <h5 className="mb-0 d-flex align-items-center">
                 <CheckCircle className="me-2 text-success" size={20} />
-                {questionData.answers.length} Answer{questionData.answers.length !== 1 ? 's' : ''}
+                {questionData.answers ? questionData.answers.length : 0} Answer{questionData.answers && questionData.answers.length !== 1 ? 's' : ''}
               </h5>
             </div>
             <div className="card-body p-0">
-              {questionData.answers.map((answer) => (
-                <div key={answer._id} className="border-bottom p-4 last-child-no-border">
-                  <div className="d-flex">
-                    {/* Vote Section */}
-                    <div className="me-3 text-center" style={{ minWidth: '60px' }}>
-                      <button
-                        className={`btn btn-sm mb-1 ${
-                          votedAnswers[answer._id] === 'up' 
-                            ? 'btn-success text-white' 
-                            : 'btn-outline-success'
-                        }`}
-                        onClick={() => handleVote(answer._id, 'up')}
-                        type="button"
-                      >
-                        <ThumbsUp size={16} />
-                      </button>
-                      <div className="fw-bold text-dark">{answer.votes}</div>
-                      <button
-                        className={`btn btn-sm mt-1 ${
-                          votedAnswers[answer._id] === 'down' 
-                            ? 'btn-danger text-white' 
-                            : 'btn-outline-danger'
-                        }`}
-                        onClick={() => handleVote(answer._id, 'down')}
-                        type="button"
-                      >
-                        <ThumbsDown size={16} />
-                      </button>
-                      {/* Accepted Answer Badge */}
-                      {questionData.acceptedAnswer === answer._id && (
-                        <div className="mt-2">
-                          <Award className="text-success" size={20} title="Accepted Answer" />
-                        </div>
-                      )}
-                    </div>
+              {questionData.answers && questionData.answers.length > 0 ? (
+                questionData.answers.map((answer) => (
+                  <div key={answer._id} className="border-bottom p-4 last-child-no-border">
+                    <div className="d-flex">
+                      {/* Vote Section */}
+                      <div className="me-3 text-center" style={{ minWidth: '60px' }}>
+                        <button
+                          className={`btn btn-sm mb-1 ${
+                            votedAnswers[answer._id] === 'up' 
+                              ? 'btn-success text-white' 
+                              : 'btn-outline-success'
+                          }`}
+                          onClick={() => handleVote(answer._id, 'up')}
+                          type="button"
+                        >
+                          <ThumbsUp size={16} />
+                        </button>
+                        <div className="fw-bold text-dark">{answer.votes || 0}</div>
+                        <button
+                          className={`btn btn-sm mt-1 ${
+                            votedAnswers[answer._id] === 'down' 
+                              ? 'btn-danger text-white' 
+                              : 'btn-outline-danger'
+                          }`}
+                          onClick={() => handleVote(answer._id, 'down')}
+                          type="button"
+                        >
+                          <ThumbsDown size={16} />
+                        </button>
+                        {/* Accepted Answer Badge */}
+                        {questionData.acceptedAnswer === answer._id && (
+                          <div className="mt-2">
+                            <Award className="text-success" size={20} title="Accepted Answer" />
+                          </div>
+                        )}
+                      </div>
 
-                    {/* Answer Content */}
-                    <div className="flex-grow-1">
-                      <div 
-                        className="mb-3"
-                        dangerouslySetInnerHTML={{ __html: renderContent(answer.content) }}
-                      />
-                      <div className="d-flex justify-content-between align-items-center text-muted small">
-                        <div>
-                          answered by <strong className="text-dark">{answer.author.username}</strong> • 
-                          {formatDate(answer.createdAt)}
-                        </div>
-                        <div>
-                          {votedAnswers[answer._id] === 'up' && (
-                            <span className="text-success">✓ Upvoted</span>
-                          )}
-                          {votedAnswers[answer._id] === 'down' && (
-                            <span className="text-danger">✓ Downvoted</span>
-                          )}
+                      {/* Answer Content */}
+                      <div className="flex-grow-1">
+                        <div 
+                          className="mb-3"
+                          dangerouslySetInnerHTML={{ __html: renderContent(answer.content) }}
+                        />
+                        <div className="d-flex justify-content-between align-items-center text-muted small">
+                          <div>
+                            answered by <strong className="text-dark">{answer.author?.username || 'Unknown'}</strong> • 
+                            {formatDate(answer.createdAt)}
+                          </div>
+                          <div>
+                            {votedAnswers[answer._id] === 'up' && (
+                              <span className="text-success">✓ Upvoted</span>
+                            )}
+                            {votedAnswers[answer._id] === 'down' && (
+                              <span className="text-danger">✓ Downvoted</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
+                ))
+              ) : (
+                <div className="p-4 text-center text-muted">
+                  <p>No answers yet. Be the first to answer!</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
@@ -739,9 +712,16 @@ const QuestionPage = () => {
                 <button 
                   className="btn btn-success"
                   onClick={handleSubmit}
-                  disabled={!newAnswer.trim()}
+                  disabled={!newAnswer.trim() || submittingAnswer}
                 >
-                  Submit Answer
+                  {submittingAnswer ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Submitting...
+                    </>
+                  ) : (
+                    'Submit Answer'
+                  )}
                 </button>
               </div>
             </div>
@@ -749,7 +729,7 @@ const QuestionPage = () => {
         </div>
       </div>
 
-      <style jsx>{`
+      <style jsx='true'>{`
         .last-child-no-border:last-child {
           border-bottom: none !important;
         }
@@ -801,6 +781,10 @@ const QuestionPage = () => {
         .spinner-border {
           width: 3rem;
           height: 3rem;
+        }
+        .spinner-border-sm {
+          width: 1rem;
+          height: 1rem;
         }
       `}</style>
     </div>

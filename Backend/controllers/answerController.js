@@ -17,6 +17,11 @@ const addAnswer = async (req, res) => {
             return res.status(404).json({ message: 'Question not found' });
         }
 
+        await Question.findByIdAndUpdate(questionId, {
+        $set: { answered : true }
+        });
+
+
         const answer = await Answer.create({
             content,
             author: req.user._id,
