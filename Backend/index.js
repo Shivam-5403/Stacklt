@@ -26,8 +26,8 @@ app.use(cors());
 app.use(json()); // Body parser
 app.use(morgan('dev'));
 app.use(cookieParser());
-app.use(notFound);
-app.use(errorHandler);
+// app.use(notFound);
+// app.use(errorHandler);
 
 
 app.use('/api/auth', authRoutes);
