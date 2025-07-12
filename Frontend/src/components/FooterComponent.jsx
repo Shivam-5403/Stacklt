@@ -35,7 +35,7 @@ const FooterComponent = () => {
         {/* Bottom Row */}
         <div className="row">
           <div className="col-12 text-center">
-            <small className="text-muted">
+            <small className="">
               Made with ❤️ for the community | 
               <span className="ms-1">Version 1.0</span>
             </small>
