@@ -4,7 +4,7 @@ import { config } from 'dotenv';
 import cors from 'cors';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
-import connectDB from './config/db';
+import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import questionRoutes from './routes/questionRoutes.js';
 import answerRoutes from './routes/answerRoutes.js';
@@ -35,7 +35,6 @@ app.use('/api/questions', questionRoutes);
 app.use('/api/answers', answerRoutes);
 app.use('/api/tags', tagRoutes);
 app.use('/api/notifications', notificationRoutes);
-
 
 // Root route
 app.get('/', (req, res) => {
