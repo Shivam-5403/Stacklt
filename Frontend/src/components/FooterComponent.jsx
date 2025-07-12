@@ -2,7 +2,7 @@ import React from 'react';
 
 const FooterComponent = () => {
   return (
-    <footer className="bg-dark text-light py-4 mt-auto">
+    <footer className="bg-dark text-light py-4 mt-auto footer">
       <div className="container-fluid">
         <div className="row align-items-center">
           {/* Main Copyright Text */}
@@ -43,7 +43,7 @@ const FooterComponent = () => {
         </div>
       </div>
 
-      <style jsx>{`
+      <style jsx="true">{`
         .hover-text-primary:hover {
           color: var(--bs-primary) !important;
           transition: color 0.2s ease;
