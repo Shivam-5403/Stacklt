@@ -5,6 +5,11 @@ import cors from 'cors';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import connectDB from './config/db';
+import authRoutes from './routes/authRoutes.js';
+import questionRoutes from './routes/questionRoutes.js';
+import answerRoutes from './routes/answerRoutes.js';
+import tagRoutes from './routes/tagRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 
 // Load .env variables
 config();
@@ -21,11 +26,12 @@ app.use(json()); // Body parser
 app.use(morgan('dev'));
 app.use(cookieParser());
 
-// Route placeholders (we'll create them next)
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/questions', require('./routes/questionRoutes'));
-app.use('/api/answers', require('./routes/answerRoutes'));
-app.use('/api/notifications', require('./routes/notificationRoutes'));
+app.use('/api/auth', authRoutes);
+app.use('/api/questions', questionRoutes);
+app.use('/api/answers', answerRoutes);
+app.use('/api/tags', tagRoutes);
+app.use('/api/notifications', notificationRoutes);
+
 
 // Root route
 app.get('/', (req, res) => {
