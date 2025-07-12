@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, MessageCircle, CheckCircle, Clock, Plus } from 'lucide-react';
+import { Search, MessageCircle, CheckCircle, Clock, Plus, CloudCog } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { isUserLoggedIn } from '../services/AuthService';
@@ -18,10 +18,9 @@ const HomePage = () => {
       try {
         setLoading(true);
         const response = await axios.get('http://localhost:5000/api/questions');
-        
         // Transform backend data to match frontend structure
         const transformedQuestions = response.data.map((q, index) => ({
-          id: q.id || index + 1,
+          id: q._id || index + 1,
           title: q.title,
           answered: q.acceptedAnswer !== null,
           votes: q.votes || 0,
