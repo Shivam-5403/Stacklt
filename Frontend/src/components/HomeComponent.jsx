@@ -1,36 +1,102 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, MessageCircle, CheckCircle, Clock, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
-const dummyQuestions = [
-  { id: 1, title: "How to use React hooks?", answered: true, votes: 23, answers: 3, views: 156, tags: ['react', 'hooks'] },
-  { id: 2, title: "What is JWT authentication?", answered: false, votes: 15, answers: 1, views: 89, tags: ['jwt', 'auth'] },
-  { id: 3, title: "Styling in React using Tailwind", answered: true, votes: 31, answers: 5, views: 234, tags: ['react', 'tailwind'] },
-  { id: 4, title: "How to implement dark mode in React?", answered: false, votes: 8, answers: 0, views: 45, tags: ['react', 'dark-mode'] },
-  { id: 5, title: "Best practices for API error handling", answered: true, votes: 42, answers: 7, views: 312, tags: ['api', 'error-handling'] },
-];
+import axios from 'axios';
 
 const HomePage = () => {
   const [filter, setFilter] = useState('Newest');
   const [searchQuery, setSearchQuery] = useState('');
-  const navigator = useNavigate()
-  
+  const [questions, setQuestions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const navigator = useNavigate();
+
+  // Fetch questions from backend
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get('http://localhost:5000/api/questions');
+        
+        // Transform backend data to match frontend structure
+        const transformedQuestions = response.data.map((q, index) => ({
+          id: q.id || index + 1,
+          title: q.title,
+          answered: q.acceptedAnswer !== null,
+          votes: q.votes || 0,
+          answers: q.answers ? q.answers.length : 0,
+          views: q.views || 0,
+          tags: q.tags ? q.tags.map(tag => tag.name.toLowerCase()) : [],
+          createdAt: q.createdAt || new Date().toISOString()
+        }));
+        
+        setQuestions(transformedQuestions);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching questions:', err);
+        setError('Failed to load questions. Please try again later.');
+        // Fallback to dummy data if backend is unavailable
+        setQuestions([
+          { id: 1, title: "How to use React hooks?", answered: true, votes: 23, answers: 3, views: 156, tags: ['react', 'hooks'] },
+          { id: 2, title: "What is JWT authentication?", answered: false, votes: 15, answers: 1, views: 89, tags: ['jwt', 'auth'] },
+          { id: 3, title: "Styling in React using Tailwind", answered: true, votes: 31, answers: 5, views: 234, tags: ['react', 'tailwind'] },
+          { id: 4, title: "How to implement dark mode in React?", answered: false, votes: 8, answers: 0, views: 45, tags: ['react', 'dark-mode'] },
+          { id: 5, title: "Best practices for API error handling", answered: true, votes: 42, answers: 7, views: 312, tags: ['api', 'error-handling'] },
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchQuestions();
+  }, []);
 
   const handleAskQuestion = () => {
-    navigator('/ask-question'); // Uncomment when routing is set up
-    // alert('Navigate to ask question page');
+    navigator('/ask-question');
   };
 
   const handleFilterClick = (selectedFilter) => {
     setFilter(selectedFilter);
   };
 
-  const filteredQuestions = dummyQuestions.filter((question) => {
+  const handleQuestionClick = (questionId) => {
+    navigator(`/question/${questionId}`);
+  };
+
+  // Filter and search questions
+  const filteredQuestions = questions.filter((question) => {
+    // Apply filter
     if (filter === 'Unanswered') return !question.answered;
+    if (filter === 'Answered') return question.answered;
     return true;
   }).filter((q) =>
-    q.title.toLowerCase().includes(searchQuery.toLowerCase())
+    q.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    q.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  // Sort questions based on filter
+  const sortedQuestions = [...filteredQuestions].sort((a, b) => {
+    if (filter === 'Newest') {
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    }
+    if (filter === 'Most Voted') {
+      return b.votes - a.votes;
+    }
+    return 0;
+  });
+
+  if (loading) {
+    return (
+      <div className="min-vh-100 bg-light d-flex justify-content-center align-items-center">
+        <div className="text-center">
+          <div className="spinner-border text-primary mb-3" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="text-muted">Loading questions...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-vh-100 bg-light">
@@ -58,6 +124,22 @@ const HomePage = () => {
         <div className="mb-4">
           <h2 className="h3 fw-bold text-dark mb-4">All Questions</h2>
           
+          {/* Error Message */}
+          {error && (
+            <div className="alert alert-warning d-flex align-items-center mb-4" role="alert">
+              <MessageCircle className="me-2 flex-shrink-0" size={20} />
+              <div>
+                {error}
+                <button 
+                  className="btn btn-link p-0 ms-2"
+                  onClick={() => window.location.reload()}
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          )}
+          
           {/* Search Bar */}
           <div className="position-relative mb-4">
             <div className="position-absolute top-50 start-0 translate-middle-y ms-3">
@@ -65,7 +147,7 @@ const HomePage = () => {
             </div>
             <input
               type="text"
-              placeholder="Search questions..."
+              placeholder="Search questions or tags..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="form-control ps-5"
@@ -75,7 +157,7 @@ const HomePage = () => {
 
           {/* Filter Buttons */}
           <div className="d-flex flex-wrap gap-2 mb-4">
-            {['Newest', 'Unanswered', 'More'].map((filterOption) => (
+            {['Newest', 'Unanswered', 'Answered', 'Most Voted'].map((filterOption) => (
               <button
                 key={filterOption}
                 onClick={() => handleFilterClick(filterOption)}
@@ -93,7 +175,7 @@ const HomePage = () => {
 
         {/* Questions List */}
         <div className="row g-3">
-          {filteredQuestions.map((question) => (
+          {sortedQuestions.map((question) => (
             <div key={question.id} className="col-12">
               <div className="card h-100 shadow-sm border-0">
                 <div className="card-body">
@@ -105,10 +187,14 @@ const HomePage = () => {
                         ) : (
                           <Clock className="me-2 text-warning flex-shrink-0" size={20} />
                         )}
-                        <h3 className="h5 mb-0 text-dark text-truncate">
-                          <a href="/question" className="text-decoration-none text-dark hover-text-primary">
+                        <h3 className="h5 mb-0 text-dark">
+                          <button 
+                            onClick={() => handleQuestionClick(question.id)}
+                            className="btn btn-link p-0 text-decoration-none text-dark hover-text-primary text-start"
+                            style={{ textAlign: 'left' }}
+                          >
                             {question.title}
-                          </a>
+                          </button>
                         </h3>
                       </div>
                       
@@ -151,12 +237,26 @@ const HomePage = () => {
             </div>
           ))}
           
-          {filteredQuestions.length === 0 && (
+          {sortedQuestions.length === 0 && !loading && (
             <div className="col-12">
               <div className="text-center py-5">
                 <MessageCircle className="text-muted mb-3" size={48} />
                 <h3 className="h5 text-dark mb-2">No questions found</h3>
-                <p className="text-muted">Try adjusting your search or filter criteria.</p>
+                <p className="text-muted">
+                  {searchQuery ? 
+                    'Try adjusting your search criteria.' : 
+                    'Be the first to ask a question!'
+                  }
+                </p>
+                {!searchQuery && (
+                  <button 
+                    onClick={handleAskQuestion}
+                    className="btn btn-primary mt-3"
+                  >
+                    <Plus className="me-2" size={16} />
+                    Ask the First Question
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -171,13 +271,13 @@ const HomePage = () => {
               You can view questions without logging in.
             </p>
             <p className="text-muted small">
-              {filteredQuestions.length} question{filteredQuestions.length !== 1 ? 's' : ''} found
+              {sortedQuestions.length} question{sortedQuestions.length !== 1 ? 's' : ''} found
             </p>
           </div>
         </div>
       </footer>
 
-      <style jsx>{`
+      <style jsx="true">{`
         .hover-text-primary:hover {
           color: var(--bs-primary) !important;
         }
