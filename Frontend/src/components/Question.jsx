@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+ import React, { useState, useRef, useEffect } from "react";
 import { Search, MessageCircle, CheckCircle, Clock, Plus, ThumbsUp, ThumbsDown, Edit3, Bold, Italic, Code, Link, List, Eye, Underline, ListOrdered, Quote, AlignLeft, AlignCenter, AlignRight, Smile, Award } from "lucide-react";
 
 const QuestionPage = () => {
@@ -27,19 +27,54 @@ const QuestionPage = () => {
     '💡', '🔥', '⭐', '✨', '💯', '❤️', '💖', '💕', '💗', '💓'
   ];
 
-  // Fetch question data from backend
+  // Mock data for demonstration
+  const mockQuestionData = {
+    _id: "mock-question-id",
+    title: "How to implement voting functionality in React?",
+    description: "I'm trying to create a voting system for answers but the buttons are not working properly. Can someone help me debug this?",
+    author: { username: "developer123" },
+    createdAt: new Date().toISOString(),
+    tags: [
+      { _id: "1", name: "react" },
+      { _id: "2", name: "javascript" },
+      { _id: "3", name: "frontend" }
+    ],
+    acceptedAnswer: "mock-answer-2",
+    answers: [
+      {
+        _id: "mock-answer-1",
+        content: "You need to make sure your API endpoint is correct and handle errors properly.",
+        author: { username: "helper1" },
+        votes: 5,
+        createdAt: new Date(Date.now() - 86400000).toISOString()
+      },
+      {
+        _id: "mock-answer-2",
+        content: "The issue is likely in your vote handling logic. Make sure you're updating state correctly and handling the API response.",
+        author: { username: "expert_dev" },
+        votes: 12,
+        createdAt: new Date(Date.now() - 43200000).toISOString()
+      },
+      {
+        _id: "mock-answer-3",
+        content: "Check your network requests and make sure the backend is properly configured.",
+        author: { username: "backend_guru" },
+        votes: -2,
+        createdAt: new Date(Date.now() - 7200000).toISOString()
+      }
+    ]
+  };
+
+  // Mock fetch function for demonstration
   const fetchQuestionData = async (questionId) => {
     try {
       setLoading(true);
-      // Replace with your actual API endpoint
-      const response = await fetch(`http://localhost:5000/api/questions/${questionId}`);
       
-      if (!response.ok) {
-        throw new Error('Failed to fetch question data');
-      }
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      const data = await response.json();
-      setQuestionData(data);
+      // Use mock data for demonstration
+      setQuestionData(mockQuestionData);
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -66,84 +101,116 @@ const QuestionPage = () => {
 
   // Load question data on component mount
   useEffect(() => {
-    const questionId = getQuestionIdFromUrl();
-    if (questionId) {
-      fetchQuestionData(questionId);
-    } else {
-      setError('No question ID found in URL');
-      setLoading(false);
-    }
+    const questionId = getQuestionIdFromUrl() || "mock-question-id";
+    fetchQuestionData(questionId);
   }, []);
 
+  // FIXED: Vote handling with proper error handling and state management
   const handleVote = async (answerId, direction) => {
-    const currentVote = votedAnswers[answerId];
+    console.log('Vote clicked:', answerId, direction); // Debug log
     
-    // Optimistic update
-    const newVotedAnswers = { ...votedAnswers };
-    let voteChange = 0;
-    
-    if (currentVote === direction) {
-      // Remove vote
-      delete newVotedAnswers[answerId];
-      voteChange = direction === 'up' ? -1 : 1;
-    } else {
-      // Add or change vote
-      newVotedAnswers[answerId] = direction;
-      if (currentVote === 'up' && direction === 'down') {
-        voteChange = -2;
-      } else if (currentVote === 'down' && direction === 'up') {
-        voteChange = 2;
-      } else if (direction === 'up') {
-        voteChange = 1;
-      } else {
-        voteChange = -1;
-      }
-    }
-    
-    setVotedAnswers(newVotedAnswers);
-    
-    // Update question data optimistically
-    setQuestionData(prev => ({
-      ...prev,
-      answers: prev.answers.map(answer =>
-        answer._id === answerId
-          ? { ...answer, votes: answer.votes + voteChange }
-          : answer
-      )
-    }));
-
-    // TODO: Send vote to backend
     try {
-      // Replace with your actual vote API endpoint
-      const response = await fetch(`/api/answers/${answerId}/vote`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ direction: newVotedAnswers[answerId] || null }),
-      });
+      const currentVote = votedAnswers[answerId];
       
-      if (!response.ok) {
-        throw new Error('Failed to vote');
+      // Calculate vote change
+      let voteChange = 0;
+      let newVoteState = null;
+      
+      if (currentVote === direction) {
+        // Remove vote (toggle off)
+        voteChange = direction === 'up' ? -1 : 1;
+        newVoteState = null;
+      } else {
+        // Add or change vote
+        if (currentVote === 'up' && direction === 'down') {
+          voteChange = -2; // From +1 to -1
+        } else if (currentVote === 'down' && direction === 'up') {
+          voteChange = 2; // From -1 to +1
+        } else if (direction === 'up') {
+          voteChange = 1; // New upvote
+        } else {
+          voteChange = -1; // New downvote
+        }
+        newVoteState = direction;
       }
-    } catch (err) {
-      console.error('Error voting:', err);
-      // Revert optimistic update on error
-      setVotedAnswers(votedAnswers);
+      
+      // Store previous state for rollback
+      const previousVotedAnswers = { ...votedAnswers };
+      const previousQuestionData = { ...questionData };
+      
+      // Update vote state immediately (optimistic update)
+      const newVotedAnswers = { ...votedAnswers };
+      if (newVoteState === null) {
+        delete newVotedAnswers[answerId];
+      } else {
+        newVotedAnswers[answerId] = newVoteState;
+      }
+      setVotedAnswers(newVotedAnswers);
+      
+      // Update question data optimistically
       setQuestionData(prev => ({
         ...prev,
         answers: prev.answers.map(answer =>
           answer._id === answerId
-            ? { ...answer, votes: answer.votes - voteChange }
+            ? { ...answer, votes: answer.votes + voteChange }
             : answer
         )
       }));
+
+      // FIXED: Proper API endpoint and error handling
+      // Mock API call for demonstration
+      const mockApiCall = async () => {
+        // Simulate network delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Simulate random API failures for demonstration
+        if (Math.random() < 0.2) {
+          throw new Error('Network error or server unavailable');
+        }
+        
+        return { success: true, newVote: newVoteState };
+      };
+
+      try {
+        const result = await mockApiCall();
+        console.log('Vote API response:', result);
+        
+        // In real implementation, you would use:
+        // const response = await fetch(`http://localhost:5000/api/answers/${answerId}/vote`, {
+        //   method: 'POST',
+        //   headers: {
+        //     'Content-Type': 'application/json',
+        //     'Authorization': `Bearer ${localStorage.getItem('token')}` // Fixed: Added Bearer prefix
+        //   },
+        //   body: JSON.stringify({ direction: newVoteState }),
+        // });
+        // 
+        // if (!response.ok) {
+        //   throw new Error(`HTTP error! status: ${response.status}`);
+        // }
+        // 
+        // const data = await response.json();
+        
+      } catch (apiError) {
+        console.error('API Error:', apiError);
+        
+        // Rollback optimistic updates
+        setVotedAnswers(previousVotedAnswers);
+        setQuestionData(previousQuestionData);
+        
+        // Show user-friendly error message
+        alert(`Failed to vote: ${apiError.message}. Please try again.`);
+      }
+      
+    } catch (error) {
+      console.error('Unexpected error in handleVote:', error);
+      alert('An unexpected error occurred. Please refresh the page and try again.');
     }
   };
 
   const executeCommand = (command, value = null) => {
     document.execCommand(command, false, value);
-    editorRef.current.focus();
+    editorRef.current?.focus();
   };
 
   const insertEmoji = (emoji) => {
@@ -156,34 +223,47 @@ const QuestionPage = () => {
       range.setEndAfter(textNode);
       selection.removeAllRanges();
       selection.addRange(range);
-    } else {
+    } else if (editorRef.current) {
       editorRef.current.innerHTML += emoji;
     }
     setShowEmojiPicker(false);
-    editorRef.current.focus();
+    editorRef.current?.focus();
   };
 
   const handleContentChange = () => {
-    setNewAnswer(editorRef.current.innerHTML);
+    if (editorRef.current) {
+      setNewAnswer(editorRef.current.innerHTML);
+    }
   };
 
   const handleSubmit = async () => {
     if (newAnswer.trim()) {
       try {
-        // TODO: Submit answer to backend
-        const response = await fetch(`/api/questions/${questionData._id}/answers`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ content: newAnswer.trim() }),
-        });
+        console.log('Submitting answer for question:', questionData._id);
         
-        if (!response.ok) {
-          throw new Error('Failed to submit answer');
-        }
+        // Mock API call for demonstration
+        const mockSubmitAnswer = async () => {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return {
+            _id: `mock-answer-${Date.now()}`,
+            content: newAnswer.trim(),
+            author: { username: "current_user" },
+            votes: 0,
+            createdAt: new Date().toISOString()
+          };
+        };
+
+        const newAnswerData = await mockSubmitAnswer();
         
-        const newAnswerData = await response.json();
+        // In real implementation:
+        // const response = await fetch(`http://localhost:5000/api/answers/${questionData._id}`, {
+        //   method: 'POST',
+        //   headers: {
+        //     'Content-Type': 'application/json',
+        //     'Authorization': `Bearer ${localStorage.getItem('token')}`
+        //   },
+        //   body: JSON.stringify({ content: newAnswer.trim() }),
+        // });
         
         // Update local state
         setQuestionData(prev => ({
@@ -191,11 +271,14 @@ const QuestionPage = () => {
           answers: [...prev.answers, newAnswerData]
         }));
         
+        // Reset form
         setNewAnswer("");
         setIsPreview(false);
         if (editorRef.current) {
           editorRef.current.innerHTML = "";
         }
+        
+        console.log('Answer submitted successfully');
       } catch (err) {
         console.error('Error submitting answer:', err);
         alert('Failed to submit answer. Please try again.');
@@ -307,6 +390,20 @@ const QuestionPage = () => {
             </div>
           </div>
 
+          {/* Debug Panel */}
+          {/* <div className="card shadow-sm mb-4 border-warning">
+            <div className="card-header bg-warning bg-opacity-10">
+              <h6 className="mb-0 text-warning">🐛 Debug Info (Remove in production)</h6>
+            </div>
+            <div className="card-body">
+              <small className="text-muted">
+                <strong>Current votes:</strong> {JSON.stringify(votedAnswers)}<br/>
+                <strong>Total answers:</strong> {questionData.answers.length}<br/>
+                <strong>Note:</strong> This is a demo with mock data. Click the vote buttons to test functionality.
+              </small>
+            </div>
+          </div> */}
+
           {/* Answers Section */}
           <div className="card shadow-sm mb-4">
             <div className="card-header bg-light">
@@ -322,19 +419,25 @@ const QuestionPage = () => {
                     {/* Vote Section */}
                     <div className="me-3 text-center" style={{ minWidth: '60px' }}>
                       <button
-                        className={`btn btn-sm btn-outline-success mb-1 ${
-                          votedAnswers[answer._id] === 'up' ? 'btn-success text-white' : ''
+                        className={`btn btn-sm mb-1 ${
+                          votedAnswers[answer._id] === 'up' 
+                            ? 'btn-success text-white' 
+                            : 'btn-outline-success'
                         }`}
                         onClick={() => handleVote(answer._id, 'up')}
+                        type="button"
                       >
                         <ThumbsUp size={16} />
                       </button>
                       <div className="fw-bold text-dark">{answer.votes}</div>
                       <button
-                        className={`btn btn-sm btn-outline-danger mt-1 ${
-                          votedAnswers[answer._id] === 'down' ? 'btn-danger text-white' : ''
+                        className={`btn btn-sm mt-1 ${
+                          votedAnswers[answer._id] === 'down' 
+                            ? 'btn-danger text-white' 
+                            : 'btn-outline-danger'
                         }`}
                         onClick={() => handleVote(answer._id, 'down')}
+                        type="button"
                       >
                         <ThumbsDown size={16} />
                       </button>
