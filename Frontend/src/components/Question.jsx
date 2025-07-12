@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Search, MessageCircle, CheckCircle, Clock, Plus, ThumbsUp, ThumbsDown, Edit3, Bold, Italic, Code, Link, List, Eye, Underline, ListOrdered, Quote, AlignLeft, AlignCenter, AlignRight, Smile, Award } from "lucide-react";
+import { isUserLoggedIn } from '../services/AuthService';
+import { useNavigate } from 'react-router-dom';
 
 const QuestionPage = () => {
   const [questionData, setQuestionData] = useState(null);
@@ -10,6 +12,7 @@ const QuestionPage = () => {
   const [isPreview, setIsPreview] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const editorRef = useRef(null);
+  const navigator = useNavigate();
 
   // Extract question ID from URL
   const getQuestionIdFromUrl = () => {
@@ -168,6 +171,8 @@ const QuestionPage = () => {
   };
 
   const handleSubmit = async () => {
+    const check = isUserLoggedIn()
+    if (check == true){
     if (newAnswer.trim()) {
       try {
         // TODO: Submit answer to backend
@@ -198,9 +203,21 @@ const QuestionPage = () => {
         }
       } catch (err) {
         console.error('Error submitting answer:', err);
-        alert('Failed to submit answer. Please try again.');
+        
       }
     }
+  }else{
+      const isConfirmed = window.confirm("Are you StackIt User ? If Yes then Click Ok to login In order to submit the answer.");
+      if (isConfirmed) {
+      console.log("User clicked OK");
+      navigator('/login');
+      // Perform actions if OK is clicked
+    } else {
+      console.log("User clicked Cancel");
+      navigator('/register');
+      // Perform actions if Cancel is clicked
+    }
+  }
   };
 
   const renderContent = (content) => {
