@@ -10,7 +10,6 @@ import questionRoutes from './routes/questionRoutes.js';
 import answerRoutes from './routes/answerRoutes.js';
 import tagRoutes from './routes/tagRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
-import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 
 // Load .env variables
 config();
