@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Search, MessageCircle, CheckCircle, Clock, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const dummyQuestions = [
   { id: 1, title: "How to use React hooks?", answered: true, votes: 23, answers: 3, views: 156, tags: ['react', 'hooks'] },
@@ -12,10 +13,13 @@ const dummyQuestions = [
 const HomePage = () => {
   const [filter, setFilter] = useState('Newest');
   const [searchQuery, setSearchQuery] = useState('');
+  const navigator = useNavigate()
+  
 
+  
   const handleAskQuestion = () => {
-    // navigate('/ask'); // Uncomment when routing is set up
-    alert('Navigate to ask question page');
+    navigator('/ask-question'); // Uncomment when routing is set up
+    // alert('Navigate to ask question page');
   };
 
   const handleFilterClick = (selectedFilter) => {
